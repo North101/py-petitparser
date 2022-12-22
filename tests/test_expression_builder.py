@@ -5,7 +5,7 @@ from petitparser.character import *
 
 
 class ExpressionBuilderTest(unittest.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
         builder = ExpressionBuilder()
         builder.group()\
             .primitive((digit().plus() & (of('.') & digit().plus()).optional()).flatten().trim())\

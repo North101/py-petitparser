@@ -2,7 +2,7 @@ from ..parser.primitive import EpsilonParser, FailureParser
 from ..parser import Parser
 
 
-def epsilon() -> Parser[None]:
+def epsilon():
     return EpsilonParser()
 
 
