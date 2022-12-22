@@ -1,15 +1,11 @@
 from petitparser.context import Context, Result
 from . import Parser
-from typing import Generic, List, TypeVar
 from .combinators import DelegateParser
 
-T = TypeVar('T')
-
-
-class RepeatingParser(DelegateParser[List[T]], Generic[T]):
+class RepeatingParser(DelegateParser):
     __slots__ = '_min', '_max'
 
-    def __init__(self, delegate: Parser[T], min: int, max: int):
+    def __init__(self, delegate, min: int, max: int):
         super().__init__(delegate)
         self._min = min
         self._max = max
@@ -20,7 +16,7 @@ class RepeatingParser(DelegateParser[List[T]], Generic[T]):
         if max != -1 and min > max:
             raise ValueError(f'invalid max repetitions: {self.range}')
 
-    def has_equal_properties(self, other: Parser) -> bool:
+    def has_equal_properties(self, other: Parser):
         return (super().has_equal_properties(other)
                 and self._min == other._min
                 and self._max == other._max)
@@ -30,26 +26,26 @@ class RepeatingParser(DelegateParser[List[T]], Generic[T]):
         return str(self._min) + '..' + ('*' if self._max == -1 else str(self._max))
 
 
-class LimitedRepeatingParser(RepeatingParser[T], Generic[T]):
+class LimitedRepeatingParser(RepeatingParser):
     __slots__ = '_limit',
 
-    def __init__(self, delegate: Parser[T], limit: Parser, min: int, max: int):
+    def __init__(self, delegate, limit: Parser, min: int, max: int):
         super().__init__(delegate, min, max)
         self._limit = limit
 
-    def get_children(self) -> List[Parser]:
+    def get_children(self):
         return [self._delegate, self._limit]
 
-    def replace(self, source: Parser[T], target: Parser[T]):
+    def replace(self, source, target):
         super().replace(source, target)
         if source is self._limit:
             self._limit = target
 
 
-class GreedyRepeatingParser(LimitedRepeatingParser[T], Generic[T]):
+class GreedyRepeatingParser(LimitedRepeatingParser):
     __slots__ = ()
 
-    def parse_on(self, context: Context) -> Result[List[T]]:
+    def parse_on(self, context: Context):
         current = context
         elements = []
 
@@ -81,7 +77,7 @@ class GreedyRepeatingParser(LimitedRepeatingParser[T], Generic[T]):
             if not contexts:
                 return limiter
 
-    def fast_parse_on(self, buffer: str, position: int) -> int:
+    def fast_parse_on(self, buffer: str, position: int):
         count = 0
         current = position
         while count < self._min:
@@ -115,14 +111,14 @@ class GreedyRepeatingParser(LimitedRepeatingParser[T], Generic[T]):
             if not positions:
                 return -1
 
-    def copy(self) -> Parser[T]:
+    def copy(self):
         return GreedyRepeatingParser(self._delegate, self._limit, self._min, self._max)
 
 
-class LazyRepeatingParser(LimitedRepeatingParser[T], Generic[T]):
+class LazyRepeatingParser(LimitedRepeatingParser):
     __slots__ = ()
 
-    def parse_on(self, context: Context) -> Result[T]:
+    def parse_on(self, context: Context):
         current = context
         elements = []
 
@@ -149,7 +145,7 @@ class LazyRepeatingParser(LimitedRepeatingParser[T], Generic[T]):
             elements.append(result.value)
             current = result
 
-    def fast_parse_on(self, buffer: str, position: int) -> int:
+    def fast_parse_on(self, buffer: str, position: int):
         count = 0
         current = position
         while count < self._min:
@@ -175,14 +171,14 @@ class LazyRepeatingParser(LimitedRepeatingParser[T], Generic[T]):
                 current = result
                 count += 1
 
-    def copy(self) -> Parser[T]:
+    def copy(self):
         return LazyRepeatingParser(self._delegate, self._limit, self._min, self._max)
 
 
-class PossesiveRepeatingParser(RepeatingParser[T], Generic[T]):
+class PossesiveRepeatingParser(RepeatingParser):
     __slots__ = ()
 
-    def parse_on(self, context: Context) -> Result[T]:
+    def parse_on(self, context: Context):
         current = context
         elements = []
 
@@ -204,7 +200,7 @@ class PossesiveRepeatingParser(RepeatingParser[T], Generic[T]):
 
         return current.success(elements)
 
-    def fast_parse_on(self, buffer: str, position: int) -> int:
+    def fast_parse_on(self, buffer: str, position: int):
         current = position
         count = 0
 
@@ -226,5 +222,5 @@ class PossesiveRepeatingParser(RepeatingParser[T], Generic[T]):
 
         return current
 
-    def copy(self) -> Parser[T]:
+    def copy(self):
         return PossesiveRepeatingParser(self._delegate, self._min, self._max)

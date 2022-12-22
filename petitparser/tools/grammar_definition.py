@@ -1,7 +1,5 @@
-from __future__ import annotations
 from petitparser.parser.combinators import DelegateParser
 from petitparser.parser import Parser
-from typing import Any, Callable, Dict, TypeVar, overload
 import sys
 
 META_DISABLE = True
@@ -102,7 +100,7 @@ class GrammarDefinition(metaclass=GrammarDefinitionMeta):
         cls._parsers[name] = parser
 
     @classmethod
-    def action(cls, name: str, action: Callable):
+    def action(cls, name: str, action):
         cls.redef(name, lambda x: x.map(action))
 
     @classmethod
@@ -110,7 +108,7 @@ class GrammarDefinition(metaclass=GrammarDefinitionMeta):
         return cls._resolve(Reference(name))
 
     @classmethod
-    def _dereference(cls, mapping: Dict[Reference, Parser], reference: Reference):
+    def _dereference(cls, mapping, reference: Reference):
         if reference in mapping:
             return mapping[reference]
 
@@ -154,10 +152,7 @@ def ref(name) -> Parser:
     return Reference(name)
 
 
-T = TypeVar('T')
-
-
-def action(func: Callable[[Any], T]) -> Parser[T]:
+def action(func):
     return func
 
 

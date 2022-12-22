@@ -1,13 +1,4 @@
-
-
 from .parser.primitive import CharPredicate, CharacterParser
-from typing import Callable, overload
-
-
-@overload
-def of(character: str, message: str = None) -> CharacterParser: ...
-@overload
-def of(predicate: CharPredicate, message: str) -> CharacterParser: ...
 
 
 def of(pred, message=None):
