@@ -1,11 +1,10 @@
-from typing import Callable, Iterable, Iterator, List, Set
 from .parser import Parser
 
 
-class ParserIterator(Iterator[Parser]):
+class ParserIterator:
     def __init__(self, root):
-        self._todo: List[Parser] = [root]
-        self._seen: Set[Parser] = {root}
+        self._todo = [root]
+        self._seen = {root}
 
     def __next__(self):
         if not self._todo:
@@ -18,8 +17,8 @@ class ParserIterator(Iterator[Parser]):
         return current
 
 
-class Mirror(Iterable[Parser]):
-    def __init__(self, parser: Parser):
+class Mirror:
+    def __init__(self, parser):
         self._parser = parser
 
     def __str__(self):
@@ -28,7 +27,7 @@ class Mirror(Iterable[Parser]):
     def __iter__(self):
         return ParserIterator(self._parser)
 
-    def transform(self, transformer: Callable[[Parser], Parser]) -> Parser:
+    def transform(self, transformer) -> Parser:
         mapping = {p: transformer(p.copy()) for p in self}
 
         seen = set(mapping.values())
