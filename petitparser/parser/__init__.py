@@ -1,19 +1,13 @@
-from __future__ import annotations
-
-from typing import Callable, Generic, List, Literal, Optional, Type, TypeVar, Union, overload
-from ..context import Context, Result
-
-T = TypeVar('T', covariant=True)
-U = TypeVar('U', covariant=True)
+from ..context import Context
 
 
-class Parser(Generic[T]):
+class Parser:
     __slots__ = ()
 
-    def parse_on(self, context: Context) -> Result[T]:
+    def parse_on(self, context: Context):
         raise NotImplementedError(type(self))
 
-    def fast_parse_on(self, buffer: str, position: int) -> int:
+    def fast_parse_on(self, buffer: str, position: int):
         res = self.parse_on(Context(buffer, position))
         return res.position if res.is_success else -1
 
@@ -23,93 +17,93 @@ class Parser(Generic[T]):
     def accept(self, inp: str):
         return self.fast_parse_on(inp, 0) >= 0
 
-    def matches(self, inp: str) -> List[T]:
+    def matches(self, inp: str):
         from .. import character
         l = []
         self.and_().map_with_side_effects(l.append).seq(character.any()).or_(character.any()).star()\
             .fast_parse_on(inp, 0)
         return l
 
-    def matches_skipping(self, inp: str) -> List[T]:
+    def matches_skipping(self, inp: str):
         from .. import character
         l = []
         self.map_with_side_effects(l.append).or_(character.any()).star()\
             .fast_parse_on(inp, 0)
         return l
 
-    def optional(self, otherwise: Parser[U] = None) -> Parser[Union[T, U]]:
+    def optional(self, otherwise = None):
         from .combinators import OptionalParser
         return OptionalParser(self, otherwise)
 
-    def star(self) -> Parser[List[T]]:
+    def star(self):
         return self.repeat(0, -1)
 
-    def star_greedy(self, limit: Parser) -> Parser[List[T]]:
+    def star_greedy(self, limit):
         return self.repeat_greedy(limit, 0, -1)
 
-    def star_lazy(self, limit: Parser) -> Parser[List[T]]:
+    def star_lazy(self, limit):
         return self.repeat_lazy(limit, 0, -1)
 
-    def plus(self) -> Parser[List[T]]:
+    def plus(self):
         return self.repeat(1, -1)
 
-    def plus_greedy(self, limit: Parser) -> Parser[List[T]]:
+    def plus_greedy(self, limit):
         return self.repeat_greedy(limit, 1, -1)
 
-    def plus_lazy(self, limit: Parser) -> Parser[List[T]]:
+    def plus_lazy(self, limit):
         return self.repeat_lazy(limit, 1, -1)
 
-    def repeat(self, min: int, max: int) -> Parser[List[T]]:
+    def repeat(self, min: int, max: int):
         from .repeating import PossesiveRepeatingParser
         return PossesiveRepeatingParser(self, min, max)
 
-    def repeat_greedy(self, limit: Parser, min: int, max: int) -> Parser[List[T]]:
+    def repeat_greedy(self, limit, min: int, max: int):
         from .repeating import GreedyRepeatingParser
         return GreedyRepeatingParser(self, limit, min, max)
 
-    def repeat_lazy(self, limit: Parser, min: int, max: int) -> Parser[List[T]]:
+    def repeat_lazy(self, limit, min: int, max: int):
         from .repeating import LazyRepeatingParser
         return LazyRepeatingParser(self, limit, min, max)
 
-    def times(self, count: int) -> Parser[List[T]]:
+    def times(self, count: int):
         return self.repeat(count, count)
 
-    def seq(self, *others: Parser[U]) -> Parser[List[Union[T, U]]]:
+    def seq(self, *others):
         from .combinators import SequenceParser
         return SequenceParser(self, *others)
 
-    def or_(self, *others: Parser[U]) -> Parser[Union[T, U]]:
+    def or_(self, *others):
         from .combinators import ChoiceParser
         return ChoiceParser(self, *others)
 
-    def and_(self) -> Parser[T]:
+    def and_(self):
         from .combinators import AndParser
         return AndParser(self)
 
-    def call_cc(self, handler: Callable[[Callable[[Context], Result[T]], Context], Result[U]]) -> Parser[U]:
+    def call_cc(self, handler):
         from .actions import ContinuationParser
         return ContinuationParser(self, handler)
 
-    def not_(self, message: str = 'unexpected') -> Parser[None]:
+    def not_(self, message: str = 'unexpected'):
         from .combinators import NotParser
         return NotParser(self, message)
 
-    def neg(self, message: str = None) -> Parser[None]:
+    def neg(self, message: str = None):
         from .. import character
         if message is None:
             message = f'{self} not expected'
 
         return self.not_(message).seq(character.any()).pick(1)
 
-    def flatten(self, message: str = None) -> Parser[str]:
+    def flatten(self, message: str = None):
         from .actions import FlattenParser
         return FlattenParser(self, message)
 
-    def token(self) -> Parser[str]:
+    def token(self):
         from .actions import TokenParser
         return TokenParser(self)
 
-    def trim(self, before: Parser = None, after: Parser = None) -> Parser[T]:
+    def trim(self, before = None, after = None):
         from .. import character
         from .actions import TrimmingParser
         if before is None:
@@ -120,7 +114,7 @@ class Parser(Generic[T]):
 
         return TrimmingParser(self, before, after)
 
-    def end(self, message: str = 'end of input expected') -> Parser[T]:
+    def end(self, message: str = 'end of input expected'):
         from .combinators import SequenceParser, EndOfInputParser
         return SequenceParser(self, EndOfInputParser(message)).pick(0)
 
@@ -128,21 +122,21 @@ class Parser(Generic[T]):
         from .combinators import SettableParser
         return SettableParser(self)
 
-    def map(self, func: Callable[[T], U]) -> Parser[U]:
+    def map(self, func):
         from .actions import ActionParser
         return ActionParser(self, func)
 
-    def map_with_side_effects(self, func: Callable[[T], U]) -> Parser[U]:
+    def map_with_side_effects(self, func):
         from .actions import ActionParser
         return ActionParser(self, func, True)
 
-    def pick(self, index: int) -> Parser:  # TODO: add generics
+    def pick(self, index: int):
         return self.map(lambda x: x[index])
 
-    def permute(self, *indexes: int) -> Parser[T]:
+    def permute(self, *indexes: int):
         return self.map(lambda x: [x[i] for i in indexes])
 
-    def separated_by(self, separator: Parser[U]) -> Parser[List[Union[T, U]]]:
+    def separated_by(self, separator):
         from .combinators import SequenceParser
 
         def _m(res):
@@ -152,7 +146,7 @@ class Parser(Generic[T]):
             return result
         return SequenceParser(self, SequenceParser(separator, self).star()).map(_m)
 
-    def delimited_by(self, separator: Parser[U]) -> Parser[List[Union[T, U]]]:
+    def delimited_by(self, separator):
         def _m(res):
             result = list(res[0])
             if res[1] is not None:
@@ -160,10 +154,10 @@ class Parser(Generic[T]):
             return result
         return self.separated_by(separator).seq(separator.optional()).map(_m)
 
-    def copy(self) -> Parser[T]:
+    def copy(self):
         raise NotImplementedError()
 
-    def is_equal_to(self, other: Parser, seen: set = None) -> bool:
+    def is_equal_to(self, other, seen: set = None):
         if seen is None:
             seen = set()
 
@@ -172,10 +166,10 @@ class Parser(Generic[T]):
 
         return type(self) is type(other) and self.has_equal_properties(other) and self.has_equal_children(other, seen)
 
-    def has_equal_properties(self, other: Parser) -> bool:
+    def has_equal_properties(self, other):
         return True
 
-    def has_equal_children(self, other: Parser, seen: set) -> bool:
+    def has_equal_children(self, other, seen: set):
         selfChildren = self.get_children()
         otherChildren = self.get_children()
 
@@ -188,7 +182,7 @@ class Parser(Generic[T]):
 
         return True
 
-    def get_children(self) -> List[Parser]:
+    def get_children(self):
         return []
 
     def replace(self, source, target):
@@ -202,11 +196,6 @@ class Parser(Generic[T]):
 
     def __and__(self, other):
         return self.seq(other)
-
-    @overload
-    def __or__(self, other: None) -> Parser[Optional[T]]: ...
-    @overload
-    def __or__(self, other: Parser[U]) -> Parser[Union[T, U]]: ...
 
     def __or__(self, other):
         if other is None:
