@@ -1,9 +1,3 @@
-from __future__ import annotations
-from typing import Any, Generic, TextIO, TypeVar
-
-T = TypeVar('T')
-
-
 class Context:
     """An immutable parse context"""
 
@@ -21,13 +15,13 @@ class Context:
     def position(self):
         return self._position
 
-    def success(self, value: T, position=None) -> Success[T]:
+    def success(self, value, position=None):
         if position is None:
             position = self._position
 
         return Success(self._buffer, position, value)
 
-    def failure(self, message: str, position=None) -> Failure:
+    def failure(self, message: str, position=None):
         if position is None:
             position = self._position
 
@@ -38,30 +32,30 @@ class Context:
         return f'{type(self).__name__}[{line}:{col}]'
 
 
-class Result(Context, Generic[T]):
+class Result(Context):
     __slots__ = ()
 
     @property
-    def is_success(self) -> bool:
+    def is_success(self):
         return False
 
     @property
-    def is_failure(self) -> bool:
+    def is_failure(self):
         return False
 
     @property
-    def value(self) -> T:
+    def value(self):
         pass
 
     @property
-    def message(self) -> str:
+    def message(self):
         pass
 
 
-class Success(Result[T], Generic[T]):
+class Success(Result):
     __slots__ = '_result',
 
-    def __init__(self, buffer: str, position: int, result: T):
+    def __init__(self, buffer: str, position: int, result):
         super().__init__(buffer, position)
         self._result = result
 
@@ -70,14 +64,14 @@ class Success(Result[T], Generic[T]):
         return True
 
     @property
-    def value(self) -> T:
+    def value(self):
         return self._result
 
-    def __str__(self) -> str:
+    def __str__(self):
         return super().__str__() + ': ' + str(self._result)
 
 
-class Failure(Result[None]):
+class Failure(Result):
     __slots__ = '_message',
 
     def __init__(self, buffer: str, position: int, message: str):
@@ -85,11 +79,11 @@ class Failure(Result[None]):
         self._message = message
 
     @property
-    def message(self) -> str:
+    def message(self):
         return self._message
 
     @property
-    def is_failure(self) -> bool:
+    def is_failure(self):
         return True
 
     @property
@@ -106,10 +100,10 @@ class ParseError(Exception):
         self.failure = failure
 
 
-class Token(Generic[T]):
+class Token():
     __slots__ = '_buffer', '_start', '_stop', '_value'
 
-    def __init__(self, buffer: str, start: int, stop: int, value: T):
+    def __init__(self, buffer: str, start: int, stop: int, value):
         self._buffer = buffer
         self._start = start
         self._stop = stop

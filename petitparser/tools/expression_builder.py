@@ -1,16 +1,8 @@
-from __future__ import annotations
-from functools import reduce
-from typing import Callable, Generic, List, TypeVar
 from petitparser.parser import Parser
 from petitparser.parser.primitive import FailureParser
 from ..parser.combinators import ChoiceParser, SequenceParser, SettableParser
 
-T = TypeVar('T')
-U = TypeVar('U')
-V = TypeVar('V')
-
-
-def _build_choice(parsers: List[Parser], otherwise: Parser = None):
+def _build_choice(parsers, otherwise: Parser = None):
     if not parsers:
         if otherwise is None:
             raise TypeError(otherwise)
@@ -21,19 +13,19 @@ def _build_choice(parsers: List[Parser], otherwise: Parser = None):
         return ChoiceParser(*parsers)
 
 
-class ExpressionBuilder(Generic[T]):
+class ExpressionBuilder():
     __slots__ = '_loopback', '_groups'
 
     def __init__(self):
-        self._loopback: SettableParser[T] = SettableParser.undefined()
+        self._loopback = SettableParser.undefined()
         self._groups = []
 
-    def group(self, defaultAction: Callable = None) -> ExpressionGroup:
+    def group(self, defaultAction):
         g = ExpressionGroup(self, defaultAction)
         self._groups.append(g)
         return g
 
-    def build(self) -> Parser:
+    def build(self):
         parser = FailureParser(
             'Highest priority group should define a primitive parser.')
 
@@ -44,10 +36,10 @@ class ExpressionBuilder(Generic[T]):
         return parser
 
 
-class ExpressionGroup(Generic[T]):
+class ExpressionGroup():
     __slots__ = '_builder', '_primitives', '_wrappers', '_prefix', '_postfix', '_left', '_right', '_defaultAction'
 
-    def __init__(self, builder: ExpressionBuilder, defaultAction: Callable = None):
+    def __init__(self, builder: ExpressionBuilder, defaultAction):
         self._builder = builder
         self._primitives = []
         self._wrappers = []
@@ -57,7 +49,7 @@ class ExpressionGroup(Generic[T]):
         self._right = []
         self._defaultAction = defaultAction or (lambda *x: list(x))
 
-    def primitive(self, parser: Parser[U], action: Callable[[U], T] = None) -> ExpressionGroup:
+    def primitive(self, parser, action = None):
         self._primitives.append(parser if action is None
                                 else parser.map(action))
         return self
@@ -65,7 +57,7 @@ class ExpressionGroup(Generic[T]):
     def _build_primitive(self, inner: Parser):
         return _build_choice(self._primitives, inner)
 
-    def wrapper(self, left: Parser[U], right: Parser[V], action: Callable[[U, T, V], T] = None) -> ExpressionGroup:
+    def wrapper(self, left, right, action = None):
         parser = SequenceParser(left, self._builder._loopback, right)
         self._wrappers.append(
             parser if action is None
@@ -77,7 +69,7 @@ class ExpressionGroup(Generic[T]):
         choices.append(inner)
         return _build_choice(choices, inner)
 
-    def prefix(self, parser: Parser[U], action: Callable[[U, T], T] = None) -> ExpressionGroup:
+    def prefix(self, parser, action = None):
         return self._add_to(self._prefix, parser, action)
 
     def _build_prefix(self, inner: Parser):
@@ -93,7 +85,7 @@ class ExpressionGroup(Generic[T]):
             return value
         return sequence.map(_m)
 
-    def postfix(self, parser: Parser[U], action: Callable[[T, U], T] = None) -> ExpressionGroup:
+    def postfix(self, parser, action = None):
         return self._add_to(self._postfix, parser, action)
 
     def _build_postfix(self, inner: Parser):
@@ -109,7 +101,7 @@ class ExpressionGroup(Generic[T]):
             return value
         return sequence.map(_m)
 
-    def right(self, parser: Parser[U], action: Callable[[T, U, T], T] = None) -> ExpressionGroup:
+    def right(self, parser, action = None):
         return self._add_to(self._right, parser, action)
 
     def _build_right(self, inner: Parser):
@@ -127,7 +119,7 @@ class ExpressionGroup(Generic[T]):
             return result
         return sequence.map(_m)
 
-    def left(self, parser: Parser[U], action: Callable[[T, U, T], T] = None) -> ExpressionGroup:
+    def left(self, parser, action = None):
         return self._add_to(self._left, parser, action)
 
     def _build_left(self, inner: Parser):
@@ -146,12 +138,12 @@ class ExpressionGroup(Generic[T]):
 
         return sequence.map(_m)
 
-    def _add_to(self, l: List[Parser], parser: Parser, action: Callable) -> ExpressionGroup:
+    def _add_to(self, l, parser: Parser, action):
         if action is None:
             action = self._defaultAction
 
         l.append(parser.map(lambda op: (op, action)))
         return self
 
-    def _build(self, inner: Parser) -> Parser:
+    def _build(self, inner: Parser):
         return self._build_left(self._build_right(self._build_postfix(self._build_prefix(self._build_wrapper(self._build_primitive(inner))))))
